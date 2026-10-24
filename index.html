@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>勉強習慣化ツール</title>
+<style>
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: white;
+  color: #151515;
+  font-family: "Yu Gothic", system-ui, sans-serif;
+  padding: 20px 12px;
+}
+main { max-width: 1100px; margin: auto; }
+h1 { font-size: 26px; }
+h2 { font-size: 20px; }
+p { color: #606875; }
+.panel {
+  background: white;
+  border: 1px solid #dce2e9;
+  border-radius: 14px;
+  padding: 18px;
+  margin: 18px 0;
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+button, input { font: inherit; }
+.toolbar button, .action, .auth-btn {
+  background: #f3f6fa;
+  border: 1px solid #cbd5e1;
+  color: #111;
+  padding: 9px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.auth-btn.primary {
+  background: #256bc8;
+  color: white;
+  border-color: #256bc8;
+}
+button:focus-visible, input:focus-visible {
+  outline: 3px solid #4186dd;
+}
+#monthLabel { font-weight: bold; font-size: 18px; }
+#monthPicker {
+  padding: 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: white;
+  color: black;
+}
+
+/* 認証パネル */
+.auth-panel {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+.auth-form {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 10px;
+}
+.auth-input {
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: white;
+}
+.user-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.message-board {
+  background: #f0f7ff;
+  border-left: 5px solid #6ba5eb;
+  padding: 15px 20px;
+  border-radius: 8px;
+  margin: 18px 0;
+}
+.message-board h3 {
+  margin: 0 0 5px 0;
+  font-size: 16px;
+  color: #0b4a99;
+}
+.message-board p {
+  margin: 0;
+  color: #334155;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+  margin: 18px 0;
+}
+.stat {
+  background: #f7f9fc;
+  border-radius: 10px;
+  padding: 12px;
+}
+.stat span { font-size: 12px; color: #596577; }
+.stat strong { display: block; font-size: 23px; }
+
+.tablewrap { overflow-x: auto; }
+table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 750px;
+  text-align: center;
+}
+th, td {
+  padding: 8px 5px;
+  border-bottom: 1px solid #e1e6ec;
+}
+th {
+  background: #f3f6fa;
+  font-size: 13px;
+}
+.date {
+  color: #000;
+  font-weight: bold;
+  text-align: left;
+  white-space: nowrap;
+}
+.today { background: #eef5ff; }
+.mark {
+  width: 49px;
+  height: 39px;
+  border-radius: 9px;
+  border: 1px solid #d5dce5;
+  font-size: 22px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.blank { background: #f4f5f7; color: #a0a6af; }
+.yes { background: #cbf4df; color: #087347; }
+.no { background: #ffdee2; color: #b32943; }
+.minutes {
+  width: 70px;
+  padding: 8px 5px;
+  text-align: right;
+  border: 1px solid #aab5c3;
+  border-radius: 7px;
+  color: black;
+  background: white;
+}
+.comment-input {
+  width: 100%;
+  min-width: 140px;
+  padding: 8px 10px;
+  border: 1px solid #aab5c3;
+  border-radius: 7px;
+  color: black;
+  background: white;
+  text-align: left;
+}
+.chartbox { height: 310px; }
+canvas { display: block; width: 100%; height: 100%; }
+.note { font-size: 12px; line-height: 1.7; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+#file { display: none; }
+
+@media(max-width:600px) {
+  h1 { font-size: 22px; }
+  .panel { padding: 12px; }
+  .stat { padding: 8px; }
+  .stat strong { font-size: 18px; }
+  .chartbox { height: 250px; }
+  .message-board { padding: 12px; }
+}
+</style>
+</head>
+<body>
+<main>
+<h1>📖 勉強習慣化ツール</h1>
+<p>時間帯ごとの勉強達成状況と、毎日の振り返りを記録しよう。</p>
+
+<!-- 認証エリア -->
+<div class="auth-panel">
+  <div id="authLoggedOut">
+    <strong>☁️ 端末間で同期するにはログインしてください</strong>
+    <div class="auth-form">
+      <input type="email" id="authEmail" class="auth-input" placeholder="メールアドレス">
+      <input type="password" id="authPassword" class="auth-input" placeholder="パスワード">
+      <button id="btnLogin" class="auth-btn primary">ログイン</button>
+      <button id="btnSignup" class="auth-btn">新規登録</button>
+    </div>
+  </div>
+  <div id="authLoggedIn" style="display: none;" class="user-status">
+    <span>🟢 <strong id="userEmailLabel"></strong> としてクラウド同期中</span>
+    <button id="btnLogout" class="auth-btn">ログアウト</button>
+  </div>
+</div>
+
+<div id="messageBoard" class="message-board">
+  <h3 id="msgTitle"></h3>
+  <p id="msgBody"></p>
+</div>
+
+<section class="panel">
+  <div class="toolbar">
+    <button id="prev">← 前月</button>
+    <span id="monthLabel"></span>
+    <button id="next">翌月 →</button>
+    <input id="monthPicker" type="month">
+    <button id="current">今月</button>
+  </div>
+  <p class="note">マスをクリックすると「空欄 → 〇 → × → 空欄」と切り替わります。</p>
+
+  <div class="stats">
+    <div class="stat">
+      <span>月間勉強時間</span>
+      <strong id="sum">0分</strong>
+    </div>
+    <div class="stat">
+      <span>月間の平均 (記録日)</span>
+      <strong id="avg">0分</strong>
+    </div>
+    <div class="stat">
+      <span>〇の数 / 判定数</span>
+      <strong id="rate">0 / 0</strong>
+    </div>
+    <div class="stat">
+      <span>直近7日間の合計</span>
+      <strong id="weekSum">0分</strong>
+    </div>
+    <div class="stat">
+      <span>直近7日間の平均</span>
+      <strong id="weekAvg">0分</strong>
+    </div>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr>
+          <th>日付</th>
+          <th>7～12時</th>
+          <th>12～18時</th>
+          <th>18～23時</th>
+          <th>23時～</th>
+          <th>勉強総時間</th>
+          <th>振り返り・メモ</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+  <p class="note">23時～の区分は翌朝7時まで。勉強総時間は分単位の手入力（例：90）です。</p>
+</section>
+
+<section class="panel">
+  <h2>📈 勉強時間の推移</h2>
+  <div class="chartbox">
+    <canvas id="chart"></canvas>
+  </div>
+  <p class="note">横軸は日付、縦軸は勉強時間（分）。未入力日はグラフの線を途切れさせます。</p>
+</section>
+
+<section class="panel">
+  <h2>データ管理</h2>
+  <p class="note">記録はログイン時に自動でクラウドに同期されます。手動バックアップも可能です。</p>
+  <div class="actions">
+    <button class="action" id="export">バックアップ保存</button>
+    <button class="action" id="import">バックアップ復元</button>
+    <button class="action" id="clear">表示月の記録を削除</button>
+  </div>
+  <input id="file" type="file" accept=".json">
+</section>
+</main>
+
+<!-- Firebase SDK 読み込み -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+<script>
+"use strict";
+
+// ↓↓↓ ここにご自身のFirebase設定を貼り付けてください ↓↓↓
+const firebaseConfig = {
+  apiKey: "AIzaSyD0A9K7LTbS2l0sl-J5jpmWIooeYM5xJ_s",
+  authDomain: "study-assist-tool-e4e53.firebaseapp.com",
+  projectId: "study-assist-tool-e4e53",
+  storageBucket: "study-assist-tool-e4e53.firebasestorage.app",
+  messagingSenderId: "805353550587",
+  appId: "1:805353550587:web:bb190c1f0ae422aec7b65e"
+};
+// ↑↑↑ ↑↑↑ ↑↑↑ ↑↑↑ ↑↑↑ ↑↑↑ ↑↑↑ ↑↑↑ ↑↑↑ ↑↑↑ ↑↑↑ ↑↑↑
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+const STORAGE_KEY = "study-habit-tracker-v1";
+const slots = ["morning","afternoon","evening","night"];
+const weekdays = ["日","月","火","水","木","金","土"];
+const $ = id => document.getElementById(id);
+
+let store = {};
+let currentUser = null;
+let unsubscribeFirestore = null;
+
+// ローカルストレージ読み込み
+try {
+  const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+  if (saved && typeof saved === "object" && !Array.isArray(saved)) {
+    store = saved;
+  }
+} catch(e) {
+  console.warn("保存データを読み込めませんでした", e);
+}
+
+const today = new Date();
+let year = today.getFullYear();
+let month = today.getMonth();
+
+const pad = n => String(n).padStart(2,"0");
+const dateKey = (y,m,d) => `${y}-${pad(m + 1)}-${pad(d)}`;
+
+// 保存処理（ローカル ＋ クラウド）
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+  if (currentUser) {
+    db.collection("users").doc(currentUser.uid).set({
+      records: store,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true }).catch(err => console.error("Cloud Save Error:", err));
+  }
+}
+
+function entry(key) {
+  return store[key] && typeof store[key] === "object" ? store[key] : {};
+}
+
+function daysInMonth() {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+// Firebase Authentication イベント処理
+auth.onAuthStateChanged(user => {
+  currentUser = user;
+  if (user) {
+    $("authLoggedOut").style.display = "none";
+    $("authLoggedIn").style.display = "flex";
+    $("userEmailLabel").textContent = user.email;
+
+    // クラウドデータのリアルタイム監視
+    unsubscribeFirestore = db.collection("users").doc(user.uid)
+      .onSnapshot(doc => {
+        if (doc.exists && doc.data().records) {
+          store = { ...store, ...doc.data().records };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+          render();
+        } else {
+          // クラウドにデータが無ければ既存のローカルデータをアップロード
+          save();
+        }
+      });
+  } else {
+    $("authLoggedOut").style.display = "block";
+    $("authLoggedIn").style.display = "none";
+    if (unsubscribeFirestore) unsubscribeFirestore();
+  }
+});
+
+// アカウント登録・ログイン・ログアウト処理
+$("btnSignup").onclick = async () => {
+  const email = $("authEmail").value.trim();
+  const pass = $("authPassword").value.trim();
+  if (!email || !pass) return alert("メールアドレスとパスワードを入力してください");
+  try {
+    await auth.createUserWithEmailAndPassword(email, pass);
+    alert("アカウントを作成し、ログインしました！");
+  } catch (err) {
+    alert("登録エラー: " + err.message);
+  }
+};
+
+$("btnLogin").onclick = async () => {
+  const email = $("authEmail").value.trim();
+  const pass = $("authPassword").value.trim();
+  if (!email || !pass) return alert("メールアドレスとパスワードを入力してください");
+  try {
+    await auth.signInWithEmailAndPassword(email, pass);
+  } catch (err) {
+    alert("ログインエラー: " + err.message);
+  }
+};
+
+$("btnLogout").onclick = () => auth.signOut();
+
+function render() {
+  $("monthLabel").textContent = `${year}年${month + 1}月`;
+  $("monthPicker").value = `${year}-${pad(month + 1)}`;
+
+  const tbody = $("rows");
+  tbody.replaceChildren();
+
+  const currentKey = dateKey(
+    today.getFullYear(), today.getMonth(), today.getDate()
+  );
+
+  for (let d = 1; d <= daysInMonth(); d++) {
+    const key = dateKey(year,month,d);
+    const data = entry(key);
+    const tr = document.createElement("tr");
+
+    if (key === currentKey) tr.className = "today";
+
+    const dateTd = document.createElement("td");
+    dateTd.className = "date";
+    const weekday = weekdays[new Date(year,month,d).getDay()];
+    dateTd.textContent = `${month + 1}/${d} (${weekday})`;
+    tr.append(dateTd);
+
+    slots.forEach(slot => {
+      const td = document.createElement("td");
+      const button = document.createElement("button");
+      const value = [1,2].includes(data[slot]) ? data[slot] : 0;
+
+      button.className = "mark " +
+        (value === 1 ? "yes" : value === 2 ? "no" : "blank");
+
+      button.textContent = value === 1 ? "〇" :
+        value === 2 ? "×" : "－";
+
+      button.onclick = () => {
+        const oldValue = entry(key)[slot] || 0;
+        store[key] = {
+          ...entry(key),
+          [slot]: (oldValue + 1) % 3
+        };
+        save();
+        render();
+      };
+
+      td.append(button);
+      tr.append(td);
+    });
+
+    const timeTd = document.createElement("td");
+    const input = document.createElement("input");
+    input.type = "number";
+    input.min = "0";
+    input.max = "1440";
+    input.step = "1";
+    input.className = "minutes";
+    input.placeholder = "未入力";
+    input.value = data.minutes === undefined ? "" : data.minutes;
+
+    input.onchange = () => {
+      const raw = input.value.trim();
+      const updated = {...entry(key)};
+
+      if (raw === "") {
+        delete updated.minutes;
+      } else {
+        const minutes = Number(raw);
+        if (!Number.isFinite(minutes) || minutes < 0 || minutes > 1440) {
+          alert("勉強時間は0～1440分で入力してください");
+          input.value = data.minutes ?? "";
+          return;
+        }
+        updated.minutes = minutes;
+      }
+
+      store[key] = updated;
+      save();
+      update();
+    };
+
+    timeTd.append(input);
+    timeTd.append(" 分");
+    tr.append(timeTd);
+
+    const commentTd = document.createElement("td");
+    const commentInput = document.createElement("input");
+    commentInput.type = "text";
+    commentInput.className = "comment-input";
+    commentInput.placeholder = "今日はどうだった？";
+    commentInput.value = data.comment || "";
+
+    commentInput.onchange = () => {
+      const raw = commentInput.value.trim();
+      const updated = {...entry(key)};
+      if (raw === "") {
+        delete updated.comment;
+      } else {
+        updated.comment = raw;
+      }
+      store[key] = updated;
+      save();
+    };
+
+    commentTd.append(commentInput);
+    tr.append(commentTd);
+
+    tbody.append(tr);
+  }
+
+  update();
+}
+
+function update() {
+  let sum = 0, count = 0, yes = 0, judged = 0;
+  const points = [];
+
+  for (let d = 1; d <= daysInMonth(); d++) {
+    const data = entry(dateKey(year,month,d));
+    const minutes = typeof data.minutes === "number" &&
+      Number.isFinite(data.minutes) &&
+      data.minutes >= 0 && data.minutes <= 1440
+        ? data.minutes : null;
+
+    points.push({day:d, minutes});
+
+    if (minutes !== null) {
+      sum += minutes;
+      count++;
+    }
+
+    slots.forEach(slot => {
+      if (data[slot] === 1) { yes++; judged++; }
+      else if (data[slot] === 2) { judged++; }
+    });
+  }
+
+  let weekSum = 0, weekCount = 0;
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
+    const key = dateKey(d.getFullYear(), d.getMonth(), d.getDate());
+    const data = entry(key);
+    if (data.minutes !== undefined && data.minutes !== null) {
+      weekSum += data.minutes;
+      weekCount++;
+    }
+  }
+  const weekAvg = weekCount ? weekSum / 7 : 0;
+
+  const fmt = n => Number(n.toFixed(0)).toLocaleString("ja-JP");
+  $("sum").textContent = fmt(sum) + "分";
+  $("avg").textContent = fmt(count ? sum/count : 0) + "分";
+  $("rate").textContent = `${yes} / ${judged}`;
+  $("weekSum").textContent = fmt(weekSum) + "分";
+  $("weekAvg").textContent = fmt(weekAvg) + "分";
+
+  updateMessage(weekSum);
+  drawChart(points);
+}
+
+function updateMessage(weekSum) {
+  const title = $("msgTitle");
+  const body = $("msgBody");
+  const board = $("messageBoard");
+
+  if (weekSum >= 900) {
+    board.style.background = "#eef5ff";
+    board.style.borderLeftColor = "#4a90e2";
+    title.textContent = "🌟 今週も素晴らしいペースです！";
+    body.textContent = `直近7日間で ${weekSum}分 も机に向かえていますね。しっかり確保できているので、適度に息抜きも挟みながら、今の良いリズムを大切にしていきましょう。`;
+  } else if (weekSum > 0) {
+    board.style.background = "#f4fcf7";
+    board.style.borderLeftColor = "#66c78a";
+    title.textContent = "🌱 着実に進んでいますね";
+    body.textContent = `今週は ${weekSum}分 の取り組みが記録されています。少しずつでも確実に前進しているので、焦る必要はありません。ご自身のペースで安心して続けてくださいね。`;
+  } else {
+    board.style.background = "#fafafa";
+    board.style.borderLeftColor = "#d1d5db";
+    title.textContent = "☕ マイペースでいきましょう";
+    body.textContent = "今は心身を休めたり、準備を整えるタイミングかもしれません。無理をして不安を感じる必要はないので、調子が良い時にまた少しずつ再開していきましょう。";
+  }
+}
+
+function drawChart(points) {
+  const canvas = $("chart");
+  const rect = canvas.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+
+  const ratio = window.devicePixelRatio || 1;
+  canvas.width = Math.round(rect.width * ratio);
+  canvas.height = Math.round(rect.height * ratio);
+
+  const ctx = canvas.getContext("2d");
+  ctx.scale(ratio,ratio);
+
+  const w = rect.width, h = rect.height;
+  const left = 48, right = 16, top = 20, bottom = 42;
+  const plotW = w-left-right, plotH = h-top-bottom;
+
+  const maxVal = Math.max(60, ...points.map(p => p.minutes ?? 0));
+  const limit = Math.ceil(maxVal / 60) * 60;
+
+  const x = day => left+(day-1)*plotW/(points.length-1);
+  const y = minutes => top+plotH-(minutes/limit)*plotH;
+
+  ctx.font = "12px system-ui";
+  ctx.lineWidth = 1;
+
+  for (let i=0; i<=4; i++) {
+    const value = limit*i/4;
+    const py = y(value);
+
+    ctx.strokeStyle = "#e1e6ed";
+    ctx.beginPath();
+    ctx.moveTo(left,py);
+    ctx.lineTo(w-right,py);
+    ctx.stroke();
+
+    ctx.fillStyle = "#556173";
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    ctx.fillText(Number(value.toFixed(0)),left-8,py);
+  }
+
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+
+  points.forEach(p => {
+    if (p.day !== 1 && p.day !== points.length && (p.day-1)%5 !== 0) return;
+    ctx.fillText(`${p.day}日`,x(p.day),h-bottom+12);
+  });
+
+  ctx.strokeStyle = "#256bc8";
+  ctx.lineWidth = 2.5;
+
+  let prev = null;
+  points.forEach(p => {
+    if (p.minutes === null) { prev = null; return; }
+    if (prev) {
+      ctx.beginPath();
+      ctx.moveTo(x(prev.day),y(prev.minutes));
+      ctx.lineTo(x(p.day),y(p.minutes));
+      ctx.stroke();
+    }
+    prev = p;
+  });
+
+  points.forEach(p => {
+    if (p.minutes === null) return;
+    ctx.fillStyle = "#256bc8";
+    ctx.beginPath();
+    ctx.arc(x(p.day),y(p.minutes),3.5,0,Math.PI*2);
+    ctx.fill();
+  });
+
+  if (points.every(p => p.minutes === null)) {
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#667085";
+    ctx.font = "13px system-ui";
+    ctx.fillText("勉強時間を入力するとグラフが表示されます", w/2, h/2);
+  }
+}
+
+function moveMonth(offset) {
+  const date = new Date(year,month+offset,1);
+  year = date.getFullYear();
+  month = date.getMonth();
+  render();
+}
+
+$("prev").onclick = () => moveMonth(-1);
+$("next").onclick = () => moveMonth(1);
+$("current").onclick = () => { year = today.getFullYear(); month = today.getMonth(); render(); };
+
+$("monthPicker").onchange = () => {
+  const parts = $("monthPicker").value.split("-").map(Number);
+  if (parts.length === 2 && parts[0]>=1900 && parts[0]<=9999 && parts[1]>=1 && parts[1]<=12) {
+    year = parts[0];
+    month = parts[1]-1;
+    render();
+  }
+};
+
+$("export").onclick = () => {
+  const payload = { app: "study-habit-tracker", version: 1, data: store };
+  const blob = new Blob([JSON.stringify(payload,null,2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "study-records.json";
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url),1000);
+};
+
+$("import").onclick = () => $("file").click();
+
+$("file").onchange = async event => {
+  const file = event.target.files[0];
+  if (!file) return;
+  try {
+    const parsed = JSON.parse(await file.text());
+    const data = parsed.app === "study-habit-tracker" ? parsed.data : parsed;
+    if (!data || typeof data !== "object" || Array.isArray(data)) throw Error();
+
+    if (confirm("記録を読み込みます。同じ日付の記録は上書きされます。")) {
+      store = {...store,...data};
+      save();
+      render();
+      alert("読み込みが完了しました");
+    }
+  } catch(e) {
+    alert("正しいバックアップファイルを読み込めませんでした");
+  }
+  event.target.value = "";
+};
+
+$("clear").onclick = () => {
+  if (!confirm(`${year}年${month+1}月の記録をすべて削除しますか？`)) return;
+  for (let d=1; d<=daysInMonth(); d++) {
+    delete store[dateKey(year,month,d)];
+  }
+  save();
+  render();
+};
+
+window.addEventListener("resize",update);
+render();
+</script>
+</body>
+</html>
